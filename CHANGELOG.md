@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Toggling a filter pill no longer steals focus from the search input
 - Gantt milestone labels and dependency arrows now honor the active filter
 - View switcher buttons are icon-only (previously icon + label)
+- Assignee avatar initials now combine the first letter of the first two words (e.g., "Michael Jordan" → "MJ" instead of "MI"), reducing collisions for people who share a first name
 
 ### Removed
 
