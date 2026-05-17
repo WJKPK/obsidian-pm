@@ -86,6 +86,16 @@ export class PMSettingTab extends PluginSettingTab {
         })
       )
 
+    new Setting(containerEl)
+      .setName('Save tasks on close')
+      .setDesc('Automatically save tasks when you close the task modal. When off, only clicking save persists changes.')
+      .addToggle((t) =>
+        t.setValue(this.plugin.settings.saveTaskOnClose).onChange(async (v) => {
+          this.plugin.settings.saveTaskOnClose = v
+          await this.plugin.saveSettings()
+        })
+      )
+
     // ── Notifications ─────────────────────────────────────────────────────────
     new Setting(containerEl).setName('Due date notifications').setHeading()
 

@@ -120,6 +120,7 @@ export interface PMSettings {
   notificationLeadDays: number
   autoSchedule: boolean
   kanbanShowSubtasks: boolean
+  saveTaskOnClose: boolean
   projectFilters: Record<string, PerProjectFilter>
 }
 
@@ -153,6 +154,7 @@ export const DEFAULT_SETTINGS: PMSettings = {
   notificationsEnabled: true,
   notificationLeadDays: 2,
   autoSchedule: true,
+  saveTaskOnClose: true,
   projectFilters: {}
 }
 
