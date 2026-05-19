@@ -122,9 +122,11 @@ function fillTableBody(ctx: TableContext): void {
   // Build set of IDs present after filtering
   const filteredIds = new Set(flat.map((f) => f.task.id))
 
-  // Sort with hierarchy
-  const sorted: FlatTask[] = []
-  const addWithChildren = (parentId: string | null) => {
+  // Sort with hierarchy, tracking visibility against the displayed tree
+  // (collapse hides descendants under a visible collapsed parent; children of
+  // filtered-out parents are promoted to top level and shown unconditionally).
+  const sorted: { item: FlatTask; hidden: boolean }[] = []
+  const addWithChildren = (parentId: string | null, hiddenByAncestor: boolean) => {
     // Include items whose parentId matches, OR whose parent was filtered out (promote to this level)
     const items = flat.filter(
       (f) =>
@@ -133,15 +135,15 @@ function fillTableBody(ctx: TableContext): void {
     )
     items.sort((a, b) => compareTask(a.task, b.task, ctx.state, ctx.plugin.settings.statuses))
     for (const item of items) {
-      sorted.push(item)
-      addWithChildren(item.task.id)
+      sorted.push({ item, hidden: hiddenByAncestor })
+      addWithChildren(item.task.id, hiddenByAncestor || item.task.collapsed)
     }
   }
-  addWithChildren(null)
+  addWithChildren(null, false)
 
-  for (const { task, depth, parentId, visible } of sorted) {
-    // When filtering, show all matches regardless of collapsed parent
-    if (!hasActiveFilter && !visible) continue
+  for (const { item, hidden } of sorted) {
+    if (hidden) continue
+    const { task, depth, parentId } = item
     renderTaskRow(tbody, task, depth, hasActiveFilter ? null : parentId, ctx)
   }
 
