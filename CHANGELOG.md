@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New setting "Show tag colors" (default on) controls the presence of a colored dot on tags
+- Copy the task ID or file path to the clipboard by clicking the corresponding header or footer text in the task editor
+
+### Changed
+
+- Design overhaul of the task modal, with improved UX and unified components
+- Status, priority, type, and dates on a task are now changed via a value picker
+- Tags, assignees, and dependencies are edited through a new searchable picker
+- Repeat and dependencies are hidden by default and added to a task on demand from an "Add property" menu
+- Archive, delete, and opening a task as a note are grouped under a single menu in the task editor
+- Subtask progress is calculated only from completed subtasks
+- Assignee avatars stack when more than one person is assigned
+- Checkbox style now matches the one on the task table
+- Task priority is shown with a colored chevron instead of a dot
+- A value picker in the task editor sizes to its options instead of a fixed width
+- Tags in the task table and on kanban cards show a colored dot, matching the task editor
+- Logged time is shown the same way in the task table and on kanban cards
+
+### Fixed
+
+- The task editor's priority strip is now displayed along the top edge of the window
+- The task editor title showed an input background when hovered or focused
+- Time tracking shows the over-estimate state once logged time passes the estimate
+
 ## [1.6.3] - 2026-06-17
 
 ### Fixed

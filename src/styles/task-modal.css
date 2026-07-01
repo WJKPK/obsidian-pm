@@ -33,52 +33,11 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  overflow-y: auto;
+  overflow: hidden;
   max-height: calc(88vh - 40px);
   padding: 0;
 }
 
-.pm-modal-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 20px 24px 14px;
-  border-bottom: 1px solid var(--pm-border);
-  position: sticky;
-  top: 0;
-  background: var(--background-primary);
-  z-index: 10;
-}
-
-.pm-modal-status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.pm-modal-title-wrap {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  gap: 4px;
-}
-
-.pm-modal-title-input {
-  width: 100%;
-  font-size: 20px;
-  font-weight: 700;
-  border: none;
-  background: transparent;
-  color: var(--pm-text);
-  outline: none;
-  padding: 0;
-  min-width: 0;
-}
-.pm-modal-title-input::placeholder {
-  color: var(--pm-text-faint);
-}
 .pm-input-error {
   box-shadow: 0 0 0 2px var(--text-error);
   border-radius: 4px;
@@ -93,13 +52,6 @@
 }
 
 /* Property rows */
-.pm-modal-props {
-  padding: 14px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
 .pm-prop-row {
   display: grid;
   grid-template-columns: 140px 1fr;
@@ -216,19 +168,29 @@
   min-height: 80px;
   /* Add the CSS variable for Obsidian bot compliance: */
   height: var(--desc-height, auto);
-  padding: 8px 10px;
-  border: 1px solid var(--pm-border);
+  padding: 6px 8px;
+  border: 1px solid transparent;
   border-radius: var(--pm-radius-sm);
-  background: var(--pm-bg2);
+  background: transparent;
   color: var(--pm-text);
   font-size: 13px;
+  line-height: 1.6;
   resize: none;
   overflow: hidden;
   box-sizing: border-box;
 }
-.pm-modal-description:focus {
-  border-color: var(--pm-accent);
+/* The description edits in place. Hover and focus paint a subtle background and border so
+   the field reads as editable; focus deepens the border. The box-shadow ring core app.css
+   adds on textarea:hover/:focus is suppressed. */
+textarea.pm-modal-description:hover,
+textarea.pm-modal-description:focus {
+  background: var(--background-modifier-hover);
+  border-color: var(--background-modifier-border);
+  box-shadow: none;
   outline: none;
+}
+textarea.pm-modal-description:focus {
+  border-color: var(--background-modifier-border-focus);
 }
 
 /* Subtasks */
@@ -249,21 +211,6 @@
   background: var(--pm-bg3);
 }
 
-.pm-subtask-checkbox {
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--pm-border);
-  border-radius: 50%;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all 0.15s;
-}
-.pm-subtask-checkbox:checked {
-  background: var(--pm-success);
-  border-color: var(--pm-success);
-}
-
 .pm-subtask-dot {
   width: 7px;
   height: 7px;
@@ -281,16 +228,27 @@
   background: var(--pm-bg3);
 }
 
-.pm-subtask-rm {
-  background: transparent;
+/* `button` prefix outranks core button chrome (grey fill + inset shadow + fixed
+   height), which otherwise paints over this ghost icon button. */
+button.pm-subtask-rm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: auto;
+  padding: 2px;
   border: none;
-  cursor: pointer;
+  border-radius: var(--pm-radius-sm);
+  background: transparent;
+  box-shadow: none;
   color: var(--pm-text-muted);
-  font-size: 11px;
-  padding: 2px 4px;
-  border-radius: 3px;
-  opacity: 0;
+  cursor: pointer;
   transition: opacity 0.15s;
+  --icon-size: 14px;
+}
+/* Subtask rows reveal the remove button on hover; time-log rows keep it shown.
+   The row-scoped selectors (0,2,0) outrank the element-prefixed base (0,1,1). */
+.pm-modal-subtask-row .pm-subtask-rm {
+  opacity: 0;
 }
 .pm-modal-subtask-row:hover .pm-subtask-rm {
   opacity: 1;

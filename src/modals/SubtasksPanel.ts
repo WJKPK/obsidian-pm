@@ -1,36 +1,46 @@
-import { ButtonComponent } from 'obsidian'
+import { setIcon } from 'obsidian'
 import type PMPlugin from '../main'
 import type { Task } from '../types'
 import { makeTask } from '../types'
-import { getStatusConfig, isTerminalStatus, getCompleteStatusId, getDefaultStatusId } from '../utils'
+import { isTerminalStatus, getCompleteStatusId, getDefaultStatusId } from '../utils'
 
 /**
- * Renders the subtasks section (list + add button) into the given container.
+ * Renders the subtasks section: a header with a completed count, the editable list, and an
+ * inline add row. The count is derived from how many subtasks sit in a terminal status.
  */
 export function renderSubtasksPanel(container: HTMLElement, task: Task, plugin: PMPlugin): void {
+  const statuses = plugin.settings.statuses
   const subSection = container.createDiv('pm-modal-section')
-  const subHeader = subSection.createDiv('pm-modal-section-header')
-  subHeader.createEl('h4', { text: `Subtasks (${task.subtasks.length})`, cls: 'pm-modal-section-title' })
-  const addSubBtn = new ButtonComponent(subHeader).setButtonText('+ add')
+
+  const subHeader = subSection.createDiv('pm-subtasks-header')
+  const heading = subHeader.createEl('h4', { text: 'Subtasks ', cls: 'pm-modal-section-title' })
+  const countEl = heading.createSpan({ cls: 'pm-subtasks-count' })
 
   const subList = subSection.createDiv('pm-modal-subtask-list')
+
+  const renderCount = () => {
+    const total = task.subtasks.length
+    if (total === 0) {
+      countEl.setText('')
+      return
+    }
+    const done = task.subtasks.filter((s) => isTerminalStatus(s.status, statuses)).length
+    countEl.setText(`${done}/${total}`)
+  }
+
   const renderSubtasks = () => {
     subList.empty()
     for (const sub of task.subtasks) {
       const row = subList.createDiv('pm-modal-subtask-row')
-      const subStatus = getStatusConfig(plugin.settings.statuses, sub.status)
 
-      const statuses = plugin.settings.statuses
-      const check = row.createEl('input', { type: 'checkbox', cls: 'pm-subtask-checkbox' })
-      check.checked = isTerminalStatus(sub.status, statuses)
-      check.addEventListener('change', () => {
-        sub.status = check.checked ? getCompleteStatusId(statuses) : getDefaultStatusId(statuses)
-        sub.progress = check.checked ? 100 : 0
+      const cb = row.createEl('input', { type: 'checkbox', cls: 'pm-subtask-checkbox' })
+      cb.checked = isTerminalStatus(sub.status, statuses)
+      cb.addEventListener('change', () => {
+        sub.status = cb.checked ? getCompleteStatusId(statuses) : getDefaultStatusId(statuses)
+        sub.progress = cb.checked ? 100 : 0
         renderSubtasks()
+        renderCount()
       })
-
-      const dot = row.createSpan({ cls: 'pm-subtask-dot' })
-      dot.setCssStyles({ background: subStatus?.color ?? 'var(--text-muted)' })
 
       const titleEl = row.createSpan({ text: sub.title, cls: 'pm-subtask-title' })
       titleEl.contentEditable = 'true'
@@ -38,32 +48,31 @@ export function renderSubtasksPanel(container: HTMLElement, task: Task, plugin: 
         sub.title = titleEl.textContent?.trim() ?? sub.title
       })
 
-      const rm = row.createEl('button', { text: '\u2715', cls: 'pm-subtask-rm' })
+      const rm = row.createEl('button', { cls: 'pm-subtask-rm' })
+      setIcon(rm, 'x')
       rm.addEventListener('click', () => {
         task.subtasks = task.subtasks.filter((s) => s.id !== sub.id)
         renderSubtasks()
+        renderCount()
       })
     }
   }
-  renderSubtasks()
 
-  addSubBtn.onClick(() => {
-    const newSub = makeTask({ title: 'New subtask', type: 'subtask' })
-    task.subtasks.push(newSub)
+  renderSubtasks()
+  renderCount()
+
+  const addRow = subSection.createDiv('pm-subtask-add-row')
+  const addInput = addRow.createEl('input', {
+    cls: 'pm-subtask-add-input',
+    attr: { placeholder: 'Add subtask…' }
+  })
+  addInput.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return
+    const title = addInput.value.trim()
+    if (!title) return
+    task.subtasks.push(makeTask({ title, type: 'subtask' }))
+    addInput.value = ''
     renderSubtasks()
-    window.setTimeout(() => {
-      const rows = subList.querySelectorAll('.pm-subtask-title')
-      const last = rows[rows.length - 1] as HTMLElement
-      if (last) {
-        last.focus()
-        const range = activeDocument.createRange()
-        range.selectNodeContents(last)
-        const sel = activeWindow.getSelection()
-        if (sel) {
-          sel.removeAllRanges()
-          sel.addRange(range)
-        }
-      }
-    }, 50)
+    renderCount()
   })
 }
