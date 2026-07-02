@@ -73,16 +73,6 @@ jobs:
       - run: pnpm check
       - run: pnpm build
 
-      - name: Package release archive
-        env:
-          REF: ${{ steps.resolve.outputs.ref }}
-        run: |
-          tag="${REF#refs/tags/}"
-          id=$(node -p "require('./manifest.json').id")
-          mkdir -p "release/$id"
-          cp main.js manifest.json styles.css "release/$id/"
-          (cd release && zip -r "../${id}-${tag}.zip" "$id")
-
       - name: Attest release artifacts
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
@@ -90,7 +80,6 @@ jobs:
             main.js
             manifest.json
             styles.css
-            *.zip
 
       - name: Create release
         env:
@@ -98,7 +87,6 @@ jobs:
           REF: ${{ steps.resolve.outputs.ref }}
         run: |
           tag="${REF#refs/tags/}"
-          id=$(node -p "require('./manifest.json').id")
           prerelease_flag=""
           case "$tag" in
             *-*) prerelease_flag="--prerelease" ;;
@@ -107,4 +95,4 @@ jobs:
             --title "$tag" \
             --generate-notes \
             $prerelease_flag \
-            main.js manifest.json styles.css "${id}-${tag}.zip"
+            main.js manifest.json styles.css
