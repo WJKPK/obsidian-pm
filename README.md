@@ -3,9 +3,12 @@
 # Project Manager for Obsidian
 *Full-featured project management, natively in your vault.*
 
+[![Obsidian community plugin](https://img.shields.io/badge/Obsidian-Community%20Plugin-7c3aed?style=for-the-badge&logo=obsidian&logoColor=white)](https://community.obsidian.md/plugins/project-manager)
 [![Downloads](https://img.shields.io/github/downloads/StepanKropachev/obsidian-pm/total?style=for-the-badge&color=2ea44f)](https://github.com/StepanKropachev/obsidian-pm/releases)
 [![Stars](https://img.shields.io/github/stars/StepanKropachev/obsidian-pm?style=for-the-badge&color=007acc)](https://github.com/StepanKropachev/obsidian-pm/stargazers)
 [![Support](https://img.shields.io/badge/Donate-Buy%20Me%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/kropachev)
+
+**[Install from Obsidian](https://community.obsidian.md/plugins/project-manager)** · **[Website](https://stepankropachev.github.io/obsidian-pm-site/)** · **[Changelog](CHANGELOG.md)**
 
 </div>
 
@@ -136,6 +139,14 @@ Each task is a `.md` file in your vault supporting:
 | Custom fields | Any per-project fields you define |
 
 ## Installation
+
+### From Obsidian (recommended)
+
+1. Open **Settings > Community plugins** and make sure Restricted mode is off.
+2. Click **Browse**, search for **Project Manager**, and click **Install**.
+3. Click **Enable**.
+
+Or open the listing directly: [community.obsidian.md/plugins/project-manager](https://community.obsidian.md/plugins/project-manager).
 
 ### Via BRAT (beta releases)
 
