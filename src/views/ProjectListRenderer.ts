@@ -5,6 +5,9 @@ import { safeAsync, isTerminalStatus } from '../utils'
 import { openProjectModal } from '../ui/ModalFactory'
 import { EmptyState } from '../ui/primitives/EmptyState'
 import { ProjectCard } from '../ui/composites/ProjectCard'
+import { ViewSwitcher } from '../ui/primitives/ViewSwitcher'
+
+export type DashboardMode = 'projects' | 'gantt'
 
 export interface ProjectListContext {
   plugin: PMPlugin
@@ -12,13 +15,27 @@ export interface ProjectListContext {
   contentEl: HTMLElement
   isStale: () => boolean
   openProjectFile: (file: TFile) => Promise<void>
+  mode: DashboardMode
+  setMode: (mode: DashboardMode) => void
 }
 
 export function renderProjectListToolbar(ctx: ProjectListContext): void {
   ctx.toolbarEl.empty()
-  ctx.toolbarEl.createEl('h2', { text: 'Project manager', cls: 'pm-toolbar-title' })
 
-  new ButtonComponent(ctx.toolbarEl)
+  const left = ctx.toolbarEl.createDiv('pm-toolbar-left')
+  left.createEl('h2', { text: 'Project manager', cls: 'pm-toolbar-title' })
+
+  const right = ctx.toolbarEl.createDiv('pm-toolbar-right')
+  new ViewSwitcher<DashboardMode>(right, {
+    options: [
+      { id: 'projects', icon: 'layout-dashboard', label: 'Board' },
+      { id: 'gantt', icon: 'git-fork', label: 'Gantt' }
+    ],
+    active: ctx.mode,
+    onChange: (id) => ctx.setMode(id)
+  })
+
+  new ButtonComponent(right)
     .setButtonText('+ new project')
     .setCta()
     .onClick(() => openCreateProjectModal(ctx))

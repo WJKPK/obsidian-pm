@@ -21,6 +21,10 @@ import { renderTimeTrackingPanel } from './TimeTrackingPanel'
 import { renderSubtasksPanel } from './SubtasksPanel'
 import { NoteLinkSuggest } from './NoteLinkSuggest'
 
+function afterPaint(fn: () => void): void {
+  requestAnimationFrame(() => requestAnimationFrame(fn))
+}
+
 export class TaskModal extends Modal {
   private task: Task
   private isNew: boolean
@@ -289,7 +293,7 @@ export class TaskModal extends Modal {
     titleInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) e.preventDefault()
     })
-    window.setTimeout(autosizeTitle, 0)
+    afterPaint(autosizeTitle)
     titleInput.focus()
     if (this.isNew) titleInput.select()
 
@@ -386,10 +390,10 @@ export class TaskModal extends Modal {
       descPreview.classList.add('pm-hidden')
       descArea.classList.remove('pm-hidden')
       descArea.value = this.task.description
-      window.setTimeout(() => {
+      afterPaint(() => {
         autoResize()
         descArea.focus()
-      }, 0)
+      })
     }
 
     const showPreview = () => {
@@ -482,7 +486,7 @@ export class TaskModal extends Modal {
       void renderPreview()
     } else {
       descPreview.classList.add('pm-hidden')
-      window.setTimeout(autoResize, 0)
+      afterPaint(autoResize)
     }
 
     // ── Subtasks ────────────────────────────────────────────────────────────

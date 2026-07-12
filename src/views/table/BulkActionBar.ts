@@ -198,7 +198,7 @@ function updateBarContent(bar: HTMLElement, ctx: TableContext, onAction: (a: Bul
 
   // Archive / Unarchive button — show based on selected tasks' state
   const selectedIds = [...ctx.state.selectedTaskIds]
-  const selectedTasks = selectedIds.map((id) => findTaskById(ctx.project, id)).filter(Boolean) as Task[]
+  const selectedTasks = selectedIds.map((id) => findTaskById(ctx.project, id)).filter((t): t is Task => t !== null)
   const hasArchived = selectedTasks.some((t) => t.archived)
   const hasNonArchived = selectedTasks.some((t) => !t.archived)
 

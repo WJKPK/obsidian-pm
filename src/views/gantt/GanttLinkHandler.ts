@@ -35,7 +35,7 @@ export function handleLinkDotClick(
   side: 'left' | 'right',
   link: LinkState,
   plugin: PMPlugin,
-  project: Project,
+  projectForTask: (taskId: string) => Project,
   onRefresh: () => Promise<void>
 ): void {
   // Nothing active yet — start linking
@@ -73,6 +73,12 @@ export function handleLinkDotClick(
 
   cancelLink(link)
 
+  const project = projectForTask(successorId)
+  if (projectForTask(predecessorId) !== project) {
+    new Notice('Cross-project dependencies are not supported.')
+    return
+  }
+
   // Check for duplicate
   const allTasks = flattenAll(project.tasks)
   const successor = allTasks.find((t) => t.id === successorId)
@@ -103,7 +109,6 @@ export function handleLinkDotClick(
   })()
 }
 
-// Simple flatten helper (avoids circular import with TaskTreeOps)
 function flattenAll(tasks: Task[]): Task[] {
   const result: Task[] = []
   const walk = (list: Task[]) => {

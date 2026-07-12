@@ -68,9 +68,7 @@ export default class PMPlugin extends Plugin {
     this.addCommand({
       id: 'open-projects',
       name: 'Open projects pane',
-      callback: () => {
-        void this.router.openDashboard()
-      }
+      callback: safeAsync(() => this.router.openDashboard())
     })
 
     this.addCommand({
@@ -88,41 +86,31 @@ export default class PMPlugin extends Plugin {
     this.addCommand({
       id: 'new-task',
       name: 'Create new task',
-      callback: () => {
-        void this.pickProjectThenCreateTask(null)
-      }
+      callback: safeAsync(() => this.pickProjectThenCreateTask(null))
     })
 
     this.addCommand({
       id: 'new-subtask',
       name: 'Create new subtask',
-      callback: () => {
-        void this.pickProjectThenCreateTask('pick-parent')
-      }
+      callback: safeAsync(() => this.pickProjectThenCreateTask('pick-parent'))
     })
 
     this.addCommand({
       id: 'undo-last-action',
       name: 'Undo last action',
-      callback: () => {
-        void this.undoLastAction()
-      }
+      callback: safeAsync(() => this.undoLastAction())
     })
 
     this.addCommand({
       id: 'redo-last-action',
       name: 'Redo last action',
-      callback: () => {
-        void this.redoLastAction()
-      }
+      callback: safeAsync(() => this.redoLastAction())
     })
 
     this.addCommand({
       id: 'import-notes-as-tasks',
       name: 'Import notes as tasks',
-      callback: () => {
-        void this.importNotes()
-      }
+      callback: safeAsync(() => this.importNotes())
     })
 
     this.addCommand({
@@ -132,7 +120,10 @@ export default class PMPlugin extends Plugin {
         const selection = editor.getSelection().trim()
         if (!selection) return false
         if (checking) return true
-        void this.createTaskFromText(selection)
+        this.createTaskFromText(selection).catch(err => {
+          console.error('[PM] Failed to create task from selection', err)
+          new Notice('Failed to create task from selection')
+        })
         return true
       }
     })
@@ -145,7 +136,10 @@ export default class PMPlugin extends Plugin {
           item
             .setTitle('Create task from selection')
             .setIcon('list-plus')
-            .onClick(() => void this.createTaskFromText(selection))
+            .onClick(() => this.createTaskFromText(selection).catch(err => {
+              console.error('[PM] Failed to create task from selection', err)
+              new Notice('Failed to create task from selection')
+            }))
         )
       })
     )
@@ -160,7 +154,10 @@ export default class PMPlugin extends Plugin {
         const cache = this.app.metadataCache.getFileCache(file)
         if (cache?.frontmatter?.['pm-project'] !== true) return false
         if (checking) return true
-        void md.leaf.setViewState({ type: PM_PROJECT_VIEW_TYPE, state: { filePath: file.path } })
+        md.leaf.setViewState({ type: PM_PROJECT_VIEW_TYPE, state: { filePath: file.path } }).catch(err => {
+          console.error('[PM] Failed to open project view', err)
+          new Notice('Failed to open project view')
+        })
         return true
       }
     })
@@ -176,8 +173,8 @@ export default class PMPlugin extends Plugin {
   async loadSettings(): Promise<void> {
     const saved = (await this.loadData()) as Partial<PMSettings> | null
     this.settings = Object.assign({}, DEFAULT_SETTINGS, saved ?? {})
-    if (!saved?.statuses?.length) this.settings.statuses = DEFAULT_SETTINGS.statuses
-    if (!saved?.priorities?.length) this.settings.priorities = DEFAULT_SETTINGS.priorities
+    if (!saved?.statuses?.length) this.settings.statuses = [...DEFAULT_SETTINGS.statuses]
+    if (!saved?.priorities?.length) this.settings.priorities = [...DEFAULT_SETTINGS.priorities]
     if (!this.settings.projectFilters) this.settings.projectFilters = {}
     if (!this.settings.collapsedTasks) this.settings.collapsedTasks = {}
 
@@ -274,7 +271,9 @@ export default class PMPlugin extends Plugin {
   /** Re-render every open project view, e.g. after a settings change affects rendering. */
   refreshProjectViews(): void {
     for (const leaf of this.app.workspace.getLeavesOfType(PM_PROJECT_VIEW_TYPE)) {
-      if (leaf.view instanceof ProjectView) void leaf.view.refreshProject()
+      if (leaf.view instanceof ProjectView) {
+        leaf.view.refreshProject().catch(err => console.error('[PM] refreshProject failed', err))
+      }
     }
   }
 

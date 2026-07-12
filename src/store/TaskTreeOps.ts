@@ -1,7 +1,6 @@
 import type { Task } from '../types'
 import { makeId } from '../types'
 
-/** Flatten a task tree into a list, preserving depth info */
 export interface FlatTask {
   task: Task
   depth: number
@@ -26,7 +25,6 @@ export function flattenTasks(
   return result
 }
 
-/** Find a task anywhere in the tree by id */
 export function findTask(tasks: Task[], id: string): Task | null {
   for (const t of tasks) {
     if (t.id === id) return t
@@ -36,7 +34,6 @@ export function findTask(tasks: Task[], id: string): Task | null {
   return null
 }
 
-/** Mutate task tree: update a task by id */
 export function updateTaskInTree(tasks: Task[], id: string, patch: Partial<Task>): boolean {
   for (const t of tasks) {
     if (t.id === id) {
@@ -48,7 +45,6 @@ export function updateTaskInTree(tasks: Task[], id: string, patch: Partial<Task>
   return false
 }
 
-/** Mutate task tree: delete a task by id */
 export function deleteTaskFromTree(tasks: Task[], id: string): boolean {
   for (let i = 0; i < tasks.length; i++) {
     if (tasks[i].id === id) {
@@ -60,7 +56,6 @@ export function deleteTaskFromTree(tasks: Task[], id: string): boolean {
   return false
 }
 
-/** Add a subtask under a parent; or top-level if parentId is null */
 export function addTaskToTree(tasks: Task[], newTask: Task, parentId: string | null): void {
   if (!parentId) {
     tasks.push(newTask)
@@ -112,7 +107,6 @@ function remapDeps(task: Task, idMap: Map<string, string>): void {
   for (const sub of task.subtasks) remapDeps(sub, idMap)
 }
 
-/** Move a task before or after another task in the tree (same level) */
 export function moveTaskInTree(tasks: Task[], taskId: string, targetId: string, position: 'before' | 'after'): boolean {
   // Try at this level first
   const taskIdx = tasks.findIndex((t) => t.id === taskId)
@@ -130,14 +124,12 @@ export function moveTaskInTree(tasks: Task[], taskId: string, targetId: string, 
   return false
 }
 
-/** Filter archived tasks from a task tree (returns a shallow copy) */
 export function filterArchived(tasks: Task[]): Task[] {
   return tasks
     .filter((t) => !t.archived)
     .map((t) => (t.subtasks.length ? { ...t, subtasks: filterArchived(t.subtasks) } : t))
 }
 
-/** Collect all unique assignees from a task tree */
 export function collectAllAssignees(tasks: Task[], extra?: string[]): string[] {
   const set = new Set<string>()
   if (extra) for (const m of extra) set.add(m)
@@ -151,7 +143,6 @@ export function collectAllAssignees(tasks: Task[], extra?: string[]): string[] {
   return [...set].filter(Boolean).sort()
 }
 
-/** Collect all unique tags from a task tree */
 export function collectAllTags(tasks: Task[]): string[] {
   const set = new Set<string>()
   const walk = (list: Task[]) => {
@@ -164,7 +155,6 @@ export function collectAllTags(tasks: Task[]): string[] {
   return [...set].filter(Boolean).sort()
 }
 
-/** Sum all logged hours for a task */
 export function totalLoggedHours(task: Task): number {
   if (!task.timeLogs?.length) return 0
   return task.timeLogs.reduce((sum, log) => sum + log.hours, 0)

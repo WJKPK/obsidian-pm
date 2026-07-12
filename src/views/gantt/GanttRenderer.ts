@@ -16,9 +16,9 @@ export interface RendererContext {
   headerSvgEl: SVGSVGElement
   cfg: TimelineCfg
   plugin: PMPlugin
-  project: Project
-  /** Status definitions in effect for this project, computed once per render pass. */
-  statuses: StatusConfig[]
+  projectForTask: (taskId: string) => Project
+  /** Resolved status palette for a task (owning project's config). */
+  statusesForTask: (taskId: string) => StatusConfig[]
   flatTasks: FlatTask[]
   drag: DragState
   link: LinkState

@@ -14,11 +14,10 @@ export class Notifier {
   constructor(private plugin: PMPlugin) {}
 
   start(): void {
-    void this.check()
+    this.check().catch(err => console.error('[PM] Notifier check failed', err))
     this.intervalId = window.setInterval(() => {
-      void this.check()
+      this.check().catch(err => console.error('[PM] Notifier check failed', err))
     }, CHECK_INTERVAL_MS)
-    this.plugin.registerInterval(this.intervalId)
   }
 
   stop(): void {
