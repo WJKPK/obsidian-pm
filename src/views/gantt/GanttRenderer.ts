@@ -20,6 +20,10 @@ export interface RendererContext {
   /** Resolved status palette for a task (owning project's config). */
   statusesForTask: (taskId: string) => StatusConfig[]
   flatTasks: FlatTask[]
+  /** task.id -> actual rendered row index (separator-aware). */
+  rowMap: Map<string, number>
+  /** Total rendered rows including project separators (excludes add-task row). */
+  totalRows: number
   drag: DragState
   link: LinkState
   onRefresh: () => Promise<void>

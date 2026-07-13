@@ -99,10 +99,7 @@ export function renderTaskLabel(
     })
 }
 
-export function renderProjectSeparator(
-  container: HTMLElement,
-  project: Project,
-): void {
+export function renderProjectSeparator(container: HTMLElement, project: Project): void {
   const el = container.createDiv('pm-gantt-project-sep')
   el.style.height = `${ROW_HEIGHT}px`
   el.style.borderLeftColor = project.color

@@ -333,7 +333,7 @@ export function renderMilestoneLabels(ctx: RendererContext): void {
     const statusConfig = getStatusConfig(ctx.statusesForTask(task.id), task.status)
     const color = statusConfig?.color ?? getComputedStyle(ctx.svgEl).getPropertyValue('--interactive-accent').trim()
 
-    const totalH = HEADER_HEIGHT + ctx.flatTasks.filter((f) => f.visible || f.depth === 0).length * ROW_HEIGHT
+    const totalH = HEADER_HEIGHT + ctx.totalRows * ROW_HEIGHT
     linesG.appendChild(
       svgEl('line', {
         x1: x,
@@ -365,14 +365,11 @@ export function renderMilestoneLabels(ctx: RendererContext): void {
 // ─── Dependency arrows ─────────────────────────────────────────────────────
 
 export function renderDependencyArrows(ctx: RendererContext): void {
-  const indexMap = new Map<string, number>()
-  ctx.flatTasks.forEach((f, i) => indexMap.set(f.task.id, i))
-
   const arrowGroup = svgEl('g', { class: 'pm-gantt-arrows' })
 
   for (const { task } of ctx.flatTasks) {
     if (!task.dependencies?.length) continue
-    const toRow = indexMap.get(task.id)
+    const toRow = ctx.rowMap.get(task.id)
     if (toRow === undefined) continue
     const toY = HEADER_HEIGHT + toRow * ROW_HEIGHT + ROW_HEIGHT / 2
     const taskStart = parsePlainDate(task.start)
@@ -380,7 +377,7 @@ export function renderDependencyArrows(ctx: RendererContext): void {
     const toX = dateToX(ctx.cfg, taskStart)
 
     for (const depId of task.dependencies) {
-      const fromRow = indexMap.get(depId)
+      const fromRow = ctx.rowMap.get(depId)
       if (fromRow === undefined) continue
       const depTask = ctx.flatTasks.find((f) => f.task.id === depId)?.task
       const depDue = depTask ? parsePlainDate(depTask.due) : null
