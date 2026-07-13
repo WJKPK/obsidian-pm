@@ -1,9 +1,8 @@
 import { ButtonComponent } from 'obsidian'
 import type PMPlugin from '../../main'
-import type { Project, Task, GanttGranularity, FilterState } from '../../types'
+import type { Project, Task, GanttGranularity } from '../../types'
 import { type FlatTask, flattenTasks } from '../../store/TaskTreeOps'
 import { applyTaskFilterPromote } from '../../store/TaskFilter'
-import { openTaskModal } from '../../ui/ModalFactory'
 import { renderAddButton } from '../../ui/composites/addButton'
 import { SegmentedControl } from '../../ui/primitives/SegmentedControl'
 import type { SubView } from '../SubView'
@@ -13,6 +12,7 @@ import { makeDragState } from './GanttDragHandler'
 import type { DragState } from './GanttDragHandler'
 import { makeLinkState, cancelLink } from './GanttLinkHandler'
 import type { LinkState } from './GanttLinkHandler'
+import type { GanttHost } from './GanttHost'
 import {
   renderTimelineHeader,
   renderGridLines,
@@ -24,7 +24,8 @@ import {
 import { svgEl } from '../../utils'
 import { Temporal, today } from '../../dates'
 import type { RendererContext } from './GanttRenderer'
-import { renderTaskLabel } from './TaskLabelRenderer'
+import { renderTaskLabel, renderProjectSeparator } from './TaskLabelRenderer'
+import { renderProjectSepBar } from './GanttTaskBarRenderer'
 
 export class GanttView implements SubView {
   private granularity: GanttGranularity
@@ -48,10 +49,8 @@ export class GanttView implements SubView {
 
   constructor(
     private container: HTMLElement,
-    private project: Project,
-    private plugin: PMPlugin,
-    private onRefresh: () => Promise<void>,
-    private filter: FilterState
+    private host: GanttHost,
+    private plugin: PMPlugin
   ) {
     this.granularity = plugin.settings.ganttGranularity
   }
@@ -179,8 +178,14 @@ export class GanttView implements SubView {
     // Tuck the body's top band (still drawn at y=HEADER_HEIGHT) under the sticky header.
     svgContainer.style.marginTop = `-${HEADER_HEIGHT}px`
 
+    const rootTasks = this.getVisibleTasks()
+    const projectSet = new Set<string>()
+    for (const t of rootTasks) projectSet.add(this.host.projectForTask(t.id).id)
+    const sepCount = projectSet.size > 1 ? projectSet.size : 0
+
     const totalRows = this.flatTasks.filter((f) => f.visible || f.depth === 0).length
-    const svgHeight = HEADER_HEIGHT + (totalRows + 1) * ROW_HEIGHT // +1 for add-task row
+    const adjustedRows = totalRows + sepCount
+    const svgHeight = HEADER_HEIGHT + (adjustedRows + 1) * ROW_HEIGHT // +1 for add-task row
 
     this.svgEl = svgEl('svg', {
       width: this.cfg.totalWidth,
@@ -219,9 +224,9 @@ export class GanttView implements SubView {
 
     const ctx = this.makeRendererContext()
     renderTimelineHeader(ctx)
-    renderGridLines(ctx, totalRows)
+    renderGridLines(ctx, adjustedRows)
     renderTodayLine(ctx, svgHeight)
-    this.renderTaskRows(leftBody, ctx)
+    this.renderTaskRows(leftBody, ctx, sepCount)
     renderDependencyArrows(ctx)
     renderMilestoneLabels(ctx)
 
@@ -239,7 +244,7 @@ export class GanttView implements SubView {
     const addRow = leftBody.createDiv('pm-gantt-label-row pm-gantt-add-row')
     addRow.style.height = `${ROW_HEIGHT}px`
     renderAddButton(addRow, 'Add task', () => {
-      openTaskModal(this.plugin, this.project, { onSave: () => this.onRefresh() })
+      this.host.addTask()
     })
 
     // Spacer compensates for horizontal scrollbar in the right panel.
@@ -270,19 +275,43 @@ export class GanttView implements SubView {
     })
   }
 
-  private renderTaskRows(leftBody: HTMLElement, ctx: RendererContext): void {
+  private renderTaskRows(leftBody: HTMLElement, ctx: RendererContext, sepCount: number): void {
+    const sepGroup = svgEl('g', { class: 'pm-gantt-project-seps' })
     const barsGroup = svgEl('g', { class: 'pm-gantt-bars' })
+    this.svgEl.appendChild(sepGroup)
     this.svgEl.appendChild(barsGroup)
 
     const labelCtx = {
       plugin: this.plugin,
-      project: this.project,
-      statuses: this.plugin.store.configFor(this.project).statuses,
-      onRefresh: this.onRefresh
+      projectForTask: (id: string) => this.host.projectForTask(id),
+      statusesForTask: (id: string) => this.host.statusesForTask(id),
+      onRefresh: this.host.onRefresh
     }
+
     let rowIndex = 0
+    let lastProjectId: string | null = null
+    const projectBlocks: Array<{ project: Project; startRow: number; endRow: number }> = []
+    const projectQueue: Array<{ project: Project; startRow: number }> = []
+
     const renderFlatList = (tasks: Task[], depth: number) => {
       for (const task of tasks) {
+        if (depth === 0) {
+          const proj = this.host.projectForTask(task.id)
+          if (proj.id !== lastProjectId) {
+            if (lastProjectId !== null) {
+              const prev = projectQueue.pop()!
+              projectBlocks.push({ ...prev, endRow: rowIndex - 1 })
+            }
+            if (lastProjectId !== null || sepCount > 0) {
+              renderProjectSeparator(leftBody, proj)
+              renderProjectSepBar(sepGroup, proj, rowIndex, ctx.cfg.totalWidth)
+              rowIndex++
+            }
+            lastProjectId = proj.id
+            projectQueue.push({ project: proj, startRow: rowIndex })
+          }
+        }
+
         renderTaskLabel(leftBody, task, depth, rowIndex, labelCtx)
         renderTaskBar(barsGroup, task, rowIndex, depth, ctx)
         rowIndex++
@@ -291,7 +320,30 @@ export class GanttView implements SubView {
         }
       }
     }
+
     renderFlatList(this.getVisibleTasks(), 0)
+
+    const last = projectQueue.pop()
+    if (last) {
+      projectBlocks.push({ ...last, endRow: rowIndex - 1 })
+    }
+
+    if (projectBlocks.length > 1) {
+      for (const block of projectBlocks) {
+        const y = HEADER_HEIGHT + block.startRow * ROW_HEIGHT
+        const h = (block.endRow - block.startRow + 1) * ROW_HEIGHT
+        sepGroup.appendChild(svgEl('rect', {
+          x: 0,
+          y,
+          width: ctx.cfg.totalWidth,
+          height: h,
+          fill: block.project.color,
+          opacity: 0.03,
+          class: 'pm-gantt-project-tint',
+          'pointer-events': 'none'
+        }))
+      }
+    }
   }
 
   private makeRendererContext(): RendererContext {
@@ -300,18 +352,18 @@ export class GanttView implements SubView {
       headerSvgEl: this.headerSvgEl,
       cfg: this.cfg,
       plugin: this.plugin,
-      project: this.project,
-      statuses: this.plugin.store.configFor(this.project).statuses,
+      projectForTask: (id: string) => this.host.projectForTask(id),
+      statusesForTask: (id: string) => this.host.statusesForTask(id),
       flatTasks: this.flatTasks,
       drag: this.drag,
       link: this.link,
-      onRefresh: this.onRefresh,
+      onRefresh: this.host.onRefresh,
       cleanupFns: this.cleanupFns
     }
   }
 
   private getVisibleTasks(): Task[] {
-    return applyTaskFilterPromote(this.project.tasks, this.filter, this.plugin.store.configFor(this.project).statuses)
+    return applyTaskFilterPromote(this.host.tasks, this.host.filter, this.host.filterStatuses)
   }
 
   private scrollToToday(): void {
@@ -321,11 +373,11 @@ export class GanttView implements SubView {
     this.scrollEl.scrollLeft = Math.max(0, center)
   }
 
-  private setAllCollapsed(collapsed: boolean): void {
-    for (const { task } of flattenTasks(this.project.tasks)) {
+  private async setAllCollapsed(collapsed: boolean): Promise<void> {
+    for (const { task } of flattenTasks(this.host.tasks)) {
       if (task.subtasks.length > 0) task.collapsed = collapsed
     }
-    void this.plugin.persistCollapsedState(this.project)
+    await this.host.persistCollapsed()
     this.render()
   }
 }
