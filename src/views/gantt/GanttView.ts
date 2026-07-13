@@ -222,7 +222,8 @@ export class GanttView implements SubView {
     activeDocument.addEventListener('keydown', onKeyDown)
     this.cleanupFns.push(() => activeDocument.removeEventListener('keydown', onKeyDown))
 
-    const ctx = this.makeRendererContext()
+    const rowMap = new Map<string, number>()
+    const ctx = this.makeRendererContext(rowMap, adjustedRows)
     renderTimelineHeader(ctx)
     renderGridLines(ctx, adjustedRows)
     renderTodayLine(ctx, svgHeight)
@@ -312,6 +313,7 @@ export class GanttView implements SubView {
           }
         }
 
+        ctx.rowMap.set(task.id, rowIndex)
         renderTaskLabel(leftBody, task, depth, rowIndex, labelCtx)
         renderTaskBar(barsGroup, task, rowIndex, depth, ctx)
         rowIndex++
@@ -332,21 +334,23 @@ export class GanttView implements SubView {
       for (const block of projectBlocks) {
         const y = HEADER_HEIGHT + block.startRow * ROW_HEIGHT
         const h = (block.endRow - block.startRow + 1) * ROW_HEIGHT
-        sepGroup.appendChild(svgEl('rect', {
-          x: 0,
-          y,
-          width: ctx.cfg.totalWidth,
-          height: h,
-          fill: block.project.color,
-          opacity: 0.03,
-          class: 'pm-gantt-project-tint',
-          'pointer-events': 'none'
-        }))
+        sepGroup.appendChild(
+          svgEl('rect', {
+            x: 0,
+            y,
+            width: ctx.cfg.totalWidth,
+            height: h,
+            fill: block.project.color,
+            opacity: 0.03,
+            class: 'pm-gantt-project-tint',
+            'pointer-events': 'none'
+          })
+        )
       }
     }
   }
 
-  private makeRendererContext(): RendererContext {
+  private makeRendererContext(rowMap: Map<string, number>, totalRows: number): RendererContext {
     return {
       svgEl: this.svgEl,
       headerSvgEl: this.headerSvgEl,
@@ -355,6 +359,8 @@ export class GanttView implements SubView {
       projectForTask: (id: string) => this.host.projectForTask(id),
       statusesForTask: (id: string) => this.host.statusesForTask(id),
       flatTasks: this.flatTasks,
+      rowMap,
+      totalRows,
       drag: this.drag,
       link: this.link,
       onRefresh: this.host.onRefresh,
