@@ -6,6 +6,7 @@ import type { SubView } from './SubView'
 import { TableView } from './table/TableView'
 import type { TableViewState } from './table/TableView'
 import { GanttView } from './gantt/GanttView'
+import type { GanttHost } from './gantt/GanttHost'
 import { KanbanView } from './KanbanView'
 import { openProjectModal, openTaskModal } from '../ui/ModalFactory'
 import { ViewSwitcher } from '../ui/primitives/ViewSwitcher'
@@ -430,7 +431,18 @@ export class ProjectView extends ItemView {
         break
       }
       case 'gantt': {
-        const gantt = new GanttView(this.bodyEl, this.project, this.plugin, () => this.refreshProject(), this.filter)
+        const project = this.project
+        const host: GanttHost = {
+          tasks: project.tasks,
+          filter: this.filter,
+          filterStatuses: this.plugin.store.configFor(project).statuses,
+          projectForTask: () => project,
+          statusesForTask: () => this.plugin.store.configFor(project).statuses,
+          persistCollapsed: () => this.plugin.persistCollapsedState(project),
+          addTask: () => openTaskModal(this.plugin, project, { onSave: () => this.refreshProject() }),
+          onRefresh: () => this.refreshProject()
+        }
+        const gantt = new GanttView(this.bodyEl, host, this.plugin)
         if (savedGanttScroll) gantt.setPendingScroll(savedGanttScroll)
         if (savedGanttLabelWidth !== null) gantt.setLabelWidth(savedGanttLabelWidth)
         this.subview = gantt

@@ -27,7 +27,7 @@ export function renderTaskBar(g: SVGGElement, task: Task, row: number, _depth: n
     return
   }
 
-  const statusConfig = getStatusConfig(ctx.statuses, task.status)
+  const statusConfig = getStatusConfig(ctx.statusesForTask(task.id), task.status)
   const color = statusConfig?.color ?? getComputedStyle(ctx.svgEl).getPropertyValue('--interactive-accent').trim()
   const rowY = HEADER_HEIGHT + row * ROW_HEIGHT
   const y = rowY + BAR_PADDING
@@ -150,7 +150,7 @@ export function renderTaskBar(g: SVGGElement, task: Task, row: number, _depth: n
       ctx.cfg,
       ctx.drag,
       ctx.plugin,
-      ctx.project,
+      ctx.projectForTask,
       ctx.onRefresh
     )
     ctx.cleanupFns.push(cleanup)
@@ -175,7 +175,7 @@ export function renderTaskBar(g: SVGGElement, task: Task, row: number, _depth: n
     })
     dot.addEventListener('click', (e: MouseEvent) => {
       e.stopPropagation()
-      handleLinkDotClick(dot, task.id, side, ctx.link, ctx.plugin, ctx.project, ctx.onRefresh)
+      handleLinkDotClick(dot, task.id, side, ctx.link, ctx.plugin, ctx.projectForTask, ctx.onRefresh)
     })
     barGroup.appendChild(dot)
   }
@@ -191,7 +191,7 @@ export function renderTaskBar(g: SVGGElement, task: Task, row: number, _depth: n
       ctx.cfg,
       ctx.drag,
       ctx.plugin,
-      ctx.project,
+      ctx.projectForTask,
       ctx.onRefresh
     )
     ctx.cleanupFns.push(moveCleanup)
@@ -206,7 +206,7 @@ export function renderTaskBar(g: SVGGElement, task: Task, row: number, _depth: n
       ctx.drag.dragMoved = false
       return
     }
-    openTaskModal(ctx.plugin, ctx.project, { task, onSave: () => ctx.onRefresh() })
+    openTaskModal(ctx.plugin, ctx.projectForTask(task.id), { task, onSave: () => ctx.onRefresh() })
   })
 }
 
@@ -270,14 +270,15 @@ function renderEmptyRowClickTarget(g: SVGGElement, task: Task, row: number, ctx:
       const snapped = snapX(rawX, snapPoints, snapThreshold)
       const iso = xToDate(ctx.cfg, snapped).toString()
 
+      const project = ctx.projectForTask(task.id)
       try {
-        await ctx.plugin.store.updateTask(ctx.project, task.id, { start: iso, due: iso })
+        await ctx.plugin.store.updateTask(project, task.id, { start: iso, due: iso })
       } catch (err) {
         new Notice('Failed to set task dates. Please try again.')
         console.error('GanttTaskBarRenderer: click-to-set-dates failed', err)
         return
       }
-      await ctx.plugin.store.scheduleAfterChange(ctx.project, task.id)
+      await ctx.plugin.store.scheduleAfterChange(project, task.id)
       await ctx.onRefresh()
     })
   )
@@ -313,7 +314,7 @@ function renderMilestoneDiamond(g: SVGGElement, task: Task, row: number, color: 
   diamond.appendChild(tt)
 
   diamond.addEventListener('click', () => {
-    openTaskModal(ctx.plugin, ctx.project, { task, onSave: () => ctx.onRefresh() })
+    openTaskModal(ctx.plugin, ctx.projectForTask(task.id), { task, onSave: () => ctx.onRefresh() })
   })
 }
 
@@ -329,7 +330,7 @@ export function renderMilestoneLabels(ctx: RendererContext): void {
     const date = parsePlainDate(task.due) ?? parsePlainDate(task.start)
     if (!date) continue
     const x = dateToX(ctx.cfg, date) + ctx.cfg.dayWidth / 2
-    const statusConfig = getStatusConfig(ctx.statuses, task.status)
+    const statusConfig = getStatusConfig(ctx.statusesForTask(task.id), task.status)
     const color = statusConfig?.color ?? getComputedStyle(ctx.svgEl).getPropertyValue('--interactive-accent').trim()
 
     const totalH = HEADER_HEIGHT + ctx.flatTasks.filter((f) => f.visible || f.depth === 0).length * ROW_HEIGHT

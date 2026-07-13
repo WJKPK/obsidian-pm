@@ -246,9 +246,16 @@ export default class PMPlugin extends Plugin {
 
   /** Persist the project's current collapsed flags. Call after toggling task.collapsed. */
   async persistCollapsedState(project: Project): Promise<void> {
-    this.settings.collapsedTasks[project.filePath] = flattenTasks(project.tasks)
-      .filter((f) => f.task.collapsed)
-      .map((f) => f.task.id)
+    await this.persistCollapsedStates([project])
+  }
+
+  /** Persist collapsed flags for many projects with a single settings write. */
+  async persistCollapsedStates(projects: Project[]): Promise<void> {
+    for (const project of projects) {
+      this.settings.collapsedTasks[project.filePath] = flattenTasks(project.tasks)
+        .filter((f) => f.task.collapsed)
+        .map((f) => f.task.id)
+    }
     await this.saveSettings()
   }
 

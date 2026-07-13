@@ -9,8 +9,8 @@ import { ROW_HEIGHT } from './TimelineConfig'
 
 export interface LabelContext {
   plugin: PMPlugin
-  project: Project
-  statuses: StatusConfig[]
+  projectForTask: (taskId: string) => Project
+  statusesForTask: (taskId: string) => StatusConfig[]
   onRefresh: () => Promise<void>
 }
 
@@ -54,7 +54,9 @@ export function renderTaskLabel(
       el.removeClass('pm-gantt-label-row--drop-before', 'pm-gantt-label-row--drop-after')
       const draggedId = e.dataTransfer?.getData('text/plain')
       if (!draggedId || draggedId === task.id) return
-      await ctx.plugin.store.reorderTask(ctx.project, draggedId, task.id, dropPosition)
+      const proj = ctx.projectForTask(draggedId)
+      if (proj !== ctx.projectForTask(task.id)) return
+      await ctx.plugin.store.reorderTask(proj, draggedId, task.id, dropPosition)
       await ctx.onRefresh()
     })
   )
@@ -64,7 +66,7 @@ export function renderTaskLabel(
     new CollapseToggle(el, {
       collapsed: task.collapsed,
       onToggle: safeAsync(async () => {
-        await ctx.plugin.toggleTaskCollapsed(ctx.project, task.id)
+        await ctx.plugin.toggleTaskCollapsed(ctx.projectForTask(task.id), task.id)
         await ctx.onRefresh()
       })
     })
@@ -73,12 +75,12 @@ export function renderTaskLabel(
   }
 
   // Color dot
-  renderStatusDot(el, task.status, ctx.statuses, 'pm-gantt-label-dot')
+  renderStatusDot(el, task.status, ctx.statusesForTask(task.id), 'pm-gantt-label-dot')
 
   // Title
   const titleEl = el.createSpan({ text: task.title, cls: 'pm-gantt-label-title' })
   titleEl.addEventListener('click', () => {
-    openTaskModal(ctx.plugin, ctx.project, { task, onSave: () => ctx.onRefresh() })
+    openTaskModal(ctx.plugin, ctx.projectForTask(task.id), { task, onSave: () => ctx.onRefresh() })
   })
 
   // Progress %
@@ -93,6 +95,22 @@ export function renderTaskLabel(
     .setRevealOnHover(true)
     .onClick((e) => {
       e.stopPropagation()
-      openTaskModal(ctx.plugin, ctx.project, { parentId: task.id, onSave: () => ctx.onRefresh() })
+      openTaskModal(ctx.plugin, ctx.projectForTask(task.id), { parentId: task.id, onSave: () => ctx.onRefresh() })
     })
+}
+
+export function renderProjectSeparator(
+  container: HTMLElement,
+  project: Project,
+): void {
+  const el = container.createDiv('pm-gantt-project-sep')
+  el.style.height = `${ROW_HEIGHT}px`
+  el.style.borderLeftColor = project.color
+  el.style.backgroundColor = `${project.color}1a`
+
+  if (project.icon) {
+    el.createSpan({ text: project.icon, cls: 'pm-gantt-project-sep-icon' })
+  }
+
+  el.createSpan({ text: project.title, cls: 'pm-gantt-project-sep-title' })
 }

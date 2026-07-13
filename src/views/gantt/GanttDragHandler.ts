@@ -40,9 +40,10 @@ export function attachDragHandle(
   cfg: TimelineCfg,
   drag: DragState,
   plugin: PMPlugin,
-  project: Project,
+  projectForTask: (taskId: string) => Project,
   onRefresh: () => Promise<void>
 ): () => void {
+  const project = projectForTask(task.id)
   let activeCleanup: (() => void) | null = null
 
   handle.addEventListener('mousedown', (e: MouseEvent) => {
@@ -161,9 +162,10 @@ export function attachBarMove(
   cfg: TimelineCfg,
   drag: DragState,
   plugin: PMPlugin,
-  project: Project,
+  projectForTask: (taskId: string) => Project,
   onRefresh: () => Promise<void>
 ): () => void {
+  const project = projectForTask(task.id)
   let activeCleanup: (() => void) | null = null
 
   rect.addEventListener('mousedown', (e: MouseEvent) => {

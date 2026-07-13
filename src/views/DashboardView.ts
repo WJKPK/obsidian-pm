@@ -1,7 +1,15 @@
 import { ItemView, WorkspaceLeaf, TFile } from 'obsidian'
 import type PMPlugin from '../main'
+import type { Project } from '../types'
+import { makeDefaultFilter } from '../types'
+import { flattenTasks } from '../store/TaskTreeOps'
+import { safeAsync } from '../utils'
+import { openProjectPicker, openTaskModal } from '../ui/ModalFactory'
+import { EmptyState } from '../ui/primitives/EmptyState'
 import { renderProjectListToolbar, renderProjectListContent } from './ProjectListRenderer'
-import type { ProjectListContext } from './ProjectListRenderer'
+import type { ProjectListContext, DashboardMode } from './ProjectListRenderer'
+import { GanttView } from './gantt/GanttView'
+import type { GanttHost } from './gantt/GanttHost'
 
 export const PM_DASHBOARD_VIEW_TYPE = 'pm-dashboard'
 
@@ -11,6 +19,8 @@ export class DashboardView extends ItemView {
   private bodyEl!: HTMLElement
   private renderToken = 0
   private reloadDebounceTimer: number | null = null
+  private mode: DashboardMode = 'projects'
+  private overviewGantt: GanttView | null = null
 
   constructor(leaf: WorkspaceLeaf, plugin: PMPlugin) {
     super(leaf)
@@ -45,6 +55,8 @@ export class DashboardView extends ItemView {
       window.clearTimeout(this.reloadDebounceTimer)
       this.reloadDebounceTimer = null
     }
+    this.overviewGantt?.destroy()
+    this.overviewGantt = null
     return Promise.resolve()
   }
 
@@ -73,21 +85,89 @@ export class DashboardView extends ItemView {
   }
 
   render(): void {
-    const ctx = this.makeCtx()
+    const ctx = this.createContext()
     renderProjectListToolbar(ctx)
-    this.bodyEl.empty()
-    this.bodyEl.addClass('pm-project-list-container')
-    void renderProjectListContent(ctx)
+    if (this.mode === 'gantt') {
+      this.bodyEl.removeClass('pm-project-list-container')
+      safeAsync(() => this.renderOverviewGantt())()
+    } else {
+      if (this.overviewGantt) {
+        this.overviewGantt.destroy()
+        this.overviewGantt = null
+      }
+      this.bodyEl.empty()
+      this.bodyEl.addClass('pm-project-list-container')
+      void renderProjectListContent(ctx)
+    }
   }
 
-  private makeCtx(): ProjectListContext {
+  private createContext(): ProjectListContext {
     const token = ++this.renderToken
     return {
       plugin: this.plugin,
       toolbarEl: this.toolbarEl,
       contentEl: this.bodyEl,
       isStale: () => token !== this.renderToken,
-      openProjectFile: (file: TFile) => this.plugin.router.openProject(file)
+      openProjectFile: (file: TFile) => this.plugin.router.openProject(file),
+      mode: this.mode,
+      setMode: (mode) => {
+        this.mode = mode
+        this.render()
+      }
     }
+  }
+
+  private async renderOverviewGantt(): Promise<void> {
+    const token = this.renderToken
+    const savedScroll = this.overviewGantt?.getScrollPosition() ?? null
+    const savedLabelWidth = this.overviewGantt?.getLabelWidth() ?? null
+    const projects = await this.plugin.store.loadAllProjects(this.plugin.settings.projectsFolder)
+    if (token !== this.renderToken) return
+
+    for (const p of projects) this.plugin.applyCollapsedState(p)
+
+    this.overviewGantt?.destroy()
+    this.overviewGantt = null
+    this.bodyEl.empty()
+
+    if (projects.length === 0) {
+      new EmptyState(this.bodyEl)
+        .setIcon('📋')
+        .setTitle('No projects yet')
+        .setBody('Create your first project to get started.')
+      return
+    }
+
+    const map = new Map<string, Project>()
+    for (const p of projects) {
+      for (const { task } of flattenTasks(p.tasks)) map.set(task.id, p)
+    }
+
+    const host: GanttHost = {
+      tasks: projects.flatMap((p) => p.tasks),
+      filter: makeDefaultFilter(),
+      filterStatuses: this.plugin.settings.statuses,
+      projectForTask: (id) => map.get(id) ?? projects[0],
+      statusesForTask: (id) => {
+        const p = map.get(id)
+        return p ? this.plugin.store.configFor(p).statuses : this.plugin.settings.statuses
+      },
+      persistCollapsed: () => this.plugin.persistCollapsedStates(projects),
+      addTask: () => {
+        openProjectPicker(this.plugin, projects, (project) => {
+          openTaskModal(this.plugin, project, { onSave: () => this.render() })
+        })
+      },
+      onRefresh: () => {
+        this.render()
+        return Promise.resolve()
+      }
+    }
+
+    const gantt = new GanttView(this.bodyEl, host, this.plugin)
+    if (savedScroll) gantt.setPendingScroll(savedScroll)
+    if (savedLabelWidth !== null) gantt.setLabelWidth(savedLabelWidth)
+    this.overviewGantt = gantt
+    gantt.render()
   }
 }

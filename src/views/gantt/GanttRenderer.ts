@@ -16,9 +16,9 @@ export interface RendererContext {
   headerSvgEl: SVGSVGElement
   cfg: TimelineCfg
   plugin: PMPlugin
-  project: Project
-  /** Status definitions in effect for this project, computed once per render pass. */
-  statuses: StatusConfig[]
+  projectForTask: (taskId: string) => Project
+  /** Resolved status palette for a task (owning project's config). */
+  statusesForTask: (taskId: string) => StatusConfig[]
   flatTasks: FlatTask[]
   drag: DragState
   link: LinkState
@@ -110,6 +110,37 @@ export function renderTodayLine(ctx: RendererContext, svgHeight: number): void {
     svgEl('polygon', {
       points: `${x},${HEADER_HEIGHT - 16} ${x + 6},${HEADER_HEIGHT - 8} ${x},${HEADER_HEIGHT} ${x - 6},${HEADER_HEIGHT - 8}`,
       class: 'pm-gantt-today-diamond'
+    })
+  )
+}
+
+// ─── Project separators ────────────────────────────────────────────────────
+
+export function renderProjectSepBar(g: SVGGElement, project: Project, row: number, totalWidth: number): void {
+  const y = HEADER_HEIGHT + row * ROW_HEIGHT
+
+  g.appendChild(
+    svgEl('rect', {
+      x: 0,
+      y,
+      width: totalWidth,
+      height: ROW_HEIGHT,
+      fill: project.color,
+      opacity: 0.08,
+      class: 'pm-gantt-project-sep-bar',
+      'pointer-events': 'none'
+    })
+  )
+
+  g.appendChild(
+    svgEl('rect', {
+      x: 0,
+      y,
+      width: 4,
+      height: ROW_HEIGHT,
+      fill: project.color,
+      class: 'pm-gantt-project-sep-stripe',
+      'pointer-events': 'none'
     })
   )
 }
